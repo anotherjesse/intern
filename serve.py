@@ -19,10 +19,12 @@ def hello():
 @app.route("/jobs", methods=['GET', 'POST'])
 def jobs():
     if request.method == 'POST':
+        userdata = request.form['src'].replace("\r", "")
         nova.servers.create(name="intern %s" % request.form['name'],
                             image=settings.image,
-                            files={'/etc/cron.d/firstboot': firstboot,
-                                   '/root/job.sh': request.form['src']},
+                            userdata=userdata,
+                            #files={'/etc/cron.d/firstboot': firstboot,
+                            #       '/root/job.sh': request.form['src']},
                             flavor=settings.flavor)
         return "new job %s" % request.form['name']
     else:
