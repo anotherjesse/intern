@@ -1,0 +1,7 @@
+user = "user"
+password = "password"
+tenant = 'tenant'
+url = "http://example.com:5000/v2.0/"
+
+image = 6 # maverick
+flavor = 2 # m1.small
