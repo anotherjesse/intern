@@ -14,7 +14,7 @@ firstboot = "* * * * * root /bin/bash /root/job.sh\n"
 
 @app.route("/")
 def hello():
-    return open('hello.html').read()
+    return render_template('hello.html')
 
 @app.route("/jobs", methods=['GET', 'POST'])
 def jobs():
