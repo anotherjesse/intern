@@ -6,7 +6,7 @@ import novaclient.v1_1.client
 nova = novaclient.v1_1.client.Client(settings.user, settings.password,
                                      settings.tenant, settings.url)
 
-from flask import Flask, request
+from flask import Flask, request, render_template
 
 app = Flask(__name__)
 
@@ -29,7 +29,7 @@ def jobs():
         return "new job %s" % request.form['name']
     else:
         servers = nova.servers.list()
-        return "<ul>" + ''.join(["<li>%s" % s.name for s in servers])
+        return render_template('jobs.html', servers=servers)
 
 if __name__ == "__main__":
     app.run(debug=True)
