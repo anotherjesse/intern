@@ -30,9 +30,8 @@ Getting started
 TODO
 ----
 
- * how to upload script? 
+ * how to upload script? currently uses userdata as:
    * injected files don't work: https://bugs.launchpad.net/nova/+bug/755168
-   * user_data is an unsupported extension as of yet
  * simple cli: intern (script_name) [args]
  * how to report result
  * how to terminate instances when complete
