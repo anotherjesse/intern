@@ -142,6 +142,16 @@ def find_flavor(ram='2GB'):
         sys.exit(1)
     return matches[0]
 
+def delete(name, qty):
+    servers = nova().servers.list()
+    matches = [s for s in servers if s.name == name]
+    if len(matches) != qty:
+        found = len(matches)
+        print "ERROR: expected %d found %d named '%s'" % (qty, found, name)
+        sys.exit(1)
+    for s in matches:
+        print "deleting: %s" % s
+        nova().servers.delete(s)
 
 def nova(user=True):
     CONF = utils.load_config("global")
@@ -176,17 +186,17 @@ def boot(name, image='quantal', ram='2GB', script=None, ping=True, user=True):
                             'ssh_key': key,
                             'hostname': name,
                             'script': script})
-    meta = {
-        'dsmode': 'local',
-    }
+    #meta = {
+    #    'dsmode': 'local',
+    #}
 
     s = nova().servers.create(name,
                          image.id,
                          flavor.id,
-                         meta=meta,
+                         #meta=meta,
                          #nic='net-id=82559d25-78e9-44f5-a1e2-3e8f735056c0',
-                         userdata=userdata,
-                         config_drive=True)
+                         userdata=userdata)
+                         #config_drive=True)
 
     print "building: %s" % s.id
 

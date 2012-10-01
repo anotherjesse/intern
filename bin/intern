@@ -86,15 +86,7 @@ class DeleteServer(command.Command):
     def take_action(self, parsed_args):
         name = parsed_args.name[0]
         qty = parsed_args.qty
-        servers = c.servers.list()
-        matches = [s for s in servers if s.name == name]
-        if len(matches) != qty:
-            found = len(matches)
-            print "ERROR: expected %d found %d named '%s'" % (qty, found, name)
-            sys.exit(1)
-        for s in matches:
-            print "deleting: %s" % s
-            c.servers.delete(s)
+        cloud.delete(name, qty)
 
 
 class VMApp(app.App):
