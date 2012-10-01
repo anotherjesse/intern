@@ -159,6 +159,7 @@ def list():
 
 
 def boot(name, image='quantal', ram='2GB', script=None, ping=True, user=True):
+    # FIXME: add image if not present
     image = find_image(image)
     print ' -> Image: %s' % image.name
     flavor = find_flavor(ram)
