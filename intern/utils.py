@@ -123,6 +123,7 @@ def generate_config():
 [global]
 auth_endpoint: http://localhost:5000/v2.0/
 debug: False
+#apt_proxy: http://example.com:3142
 
 [user]
 user: demo

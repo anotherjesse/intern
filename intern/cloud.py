@@ -40,16 +40,22 @@ def wait_for_ping(ip):
 
 class VM(object):
 
-    def __init__(self, ip):
-        self.ip = ip
+    def __init__(self, server):
+        self.server = server
         self.ssh = None
 
+    @property
+    def ip(self):
+        return extract_ip4(self.server.networks)
+
+
     def __str__(self):
-        return '<VM "%s">' % self.ip
+        return '<VM "%s">' % self.server.name
 
     def connect(self, max_tries=1):
         if self.ssh:
             return True
+        #print "attempting to connect to %s" % self.ip
         key = paramiko.RSAKey.from_private_key_file('/home/jesse/.ssh/id_rsa')
         tries = 0
         while(True):
@@ -60,6 +66,7 @@ class VM(object):
                 self.ssh = c
                 return True
             except (paramiko.AuthenticationException, paramiko.SSHException):
+                #print "unable to connect to %s" % self.ip
                 tries += 1
                 if tries > max_tries:
                     raise
@@ -102,6 +109,10 @@ def cloudconfig(options):
     lines = ['#cloud-config']
     if 'ssh_key' in options:
         lines.append('ssh_authorized_keys:\n - %s' % options['ssh_key'])
+    if 'packages' in options:
+        lines.append('packages:')
+        for p in options['packages']:
+            lines.append(' - %s' % p)
     if 'apt_proxy' in options:
         lines.append('apt_proxy: %s' % options['apt_proxy'])
     if 'hostname' in options:
@@ -225,13 +236,13 @@ def list():
     return nova().servers.list()
 
 
-def boot(name, image='quantal', flavor=None, script=None, ping=True, user=True):
+def boot(name, image='quantal', flavor=None, script=None, ping=True,
+         user=True, packages=None, apt_proxy=None):
     # FIXME: add image if not present
     image = find_image(image)
     print ' -> Image: %s' % image.name
     flavor = find_flavor(flavor)
     print ' -> VM: %s' % flavor.name
-    script = "#!/bin/sh\necho ubuntu:ubuntu | chpasswd"
 
     try:
         key_path = os.path.expanduser('~/.ssh/id_rsa.pub')
@@ -239,9 +250,14 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True, user=True):
     except:
         key = None
 
-    userdata = cloudconfig({'apt_proxy': 'http://10.0.0.73:3142',
+    if apt_proxy is None:
+        CONF = utils.load_config("global")
+        apt_proxy = CONF.get('apt_proxy')
+
+    userdata = cloudconfig({'apt_proxy': apt_proxy,
                             'ssh_key': key,
                             'hostname': name,
+                            'packages': packages,
                             'script': script})
     #meta = {
     #    'dsmode': 'local',
