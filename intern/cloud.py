@@ -49,6 +49,14 @@ class VM(object):
     def ip(self):
         return extract_ip4(self.server.networks)
 
+    @property
+    def name(self):
+        return self.server.name
+
+    @property
+    def status(self):
+        # FIXME: should this refresh?
+        return self.server.status
 
     def __str__(self):
         return '<VM "%s">' % self.server.name
@@ -87,18 +95,25 @@ class VM(object):
             return stdout.read()
 
     def get(self, path):
+        """return a string that is the content of a remote file"""
         if self.connect():
             sftp = self.ssh.open_sftp()
             resp = sftp.open(path).read()
             sftp.close()
             return resp
+        else:
+            raise Exception('connect')
 
     def put(self, path, content):
+        """upload a text file to the remote server"""
         if self.connect():
             sftp = self.ssh.open_sftp()
             resp = sftp.open(path, 'w').write(content)
+            print resp
             sftp.close()
             return resp
+        else:
+            raise Exception('connect')
 
 
 ##############
@@ -136,32 +151,14 @@ def find_image(name):
     return matches[0]
 
 
-def parse(s, megabyte=True):
-    if s:
-        if type(s) is int:
-            return s
-        if 'G' in s:
-            s = int(s.split('G')[0])
-            if megabyte:
-                return 1024 * s
-            else:
-                return s
-        if 'M' in s:
-            s = int(s.split('M')[0])
-            if megabyte:
-                return s
-            else:
-                return s / 1024
-
-
 def find_flavor(properties=None):
     if not properties:
         properties={}
 
-    ram = parse(properties.get('ram'))
-    root = parse(properties.get('root'), False)
-    ephemeral = parse(properties.get('ephemeral'), False)
-    vcpus = parse(properties.get('vcpus'), False)
+    ram = utils.parse(properties.get('ram'))
+    root = utils.parse(properties.get('root'), False)
+    ephemeral = utils.parse(properties.get('ephemeral'), False)
+    vcpus = utils.parse(properties.get('vcpus'), False)
 
     flavors = nova().flavors.list()
     if ram:
@@ -238,7 +235,7 @@ def nova(admin=False):
 
 
 def list():
-    return nova().servers.list()
+    return [VM(s) for s in nova().servers.list()]
 
 
 def boot(name, image='quantal', flavor=None, script=None, ping=True,

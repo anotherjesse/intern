@@ -57,6 +57,24 @@ def admin(func):
     return f
 
 
+def parse(s, megabyte=True):
+    if s:
+        if type(s) is int:
+            return s
+        if 'G' in s:
+            s = int(s.split('G')[0])
+            if megabyte:
+                return 1024 * s
+            else:
+                return s
+        if 'M' in s:
+            s = int(s.split('M')[0])
+            if megabyte:
+                return s
+            else:
+                return s / 1024
+
+
 def ensure_int(param):
     """Ensure the given param is an int"""
     try:

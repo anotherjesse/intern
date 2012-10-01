@@ -50,7 +50,7 @@ class ListServers(lister.Lister):
 
         results = []
         for s in cloud.list():
-            results.append([s.name, s.status, 'extract_ip4(s.networks)'])
+            results.append([s.name, s.status, s.ip])
         return (columns, results)
 
 
