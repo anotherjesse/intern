@@ -18,19 +18,17 @@ from intern import version
 
 
 setuptools.setup(
-    name="irc-intern",
+    name="intern",
     version=version.version_hash(),
     author="Jesse Andrews",
     author_email="anotherjesse@gmail.com",
     description="Do my work (run my script in the cloud)",
     license="Apache License, Version 2.0",
-    url="http://intern.devstack.org",
-    packages=["pyhole"],
+    packages=["intern"],
     install_requires=[
-        "python-novaclient",
-        "pywapi"
+        "python-novaclient"
     ],
-    scripts=["bin/pyhole"],
+    scripts=["bin/intern"],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
