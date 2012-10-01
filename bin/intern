@@ -63,13 +63,25 @@ class BootServer(command.Command):
         parser = super(BootServer, self).get_parser(name)
         parser.add_argument('name', nargs=1)
         parser.add_argument('image', nargs='?', default='Ubuntu 12.04 cloudimg amd64')
-        parser.add_argument('ram', nargs='?', default='2GB')
+        parser.add_argument('--ram', nargs='?', default='2GB')
+        parser.add_argument('--vcpus', nargs='?', type=int)
+        parser.add_argument('--root', nargs='?', type=int)
+        parser.add_argument('--ephemeral', nargs='?', type=int)
         return parser
 
     def take_action(self, parsed_args):
         name = parsed_args.name[0]
         self.log.info('booting %s' % name)
-        cloud.boot(name, parsed_args.image, parsed_args.ram)
+        properties = {}
+        if parsed_args.ram:
+            properties['ram'] = parsed_args.ram
+        if parsed_args.vcpus:
+            properties['vcpus'] = parsed_args.vcpus
+        if parsed_args.root:
+            properties['root'] = parsed_args.root
+        if parsed_args.ephemeral:
+            properties['ephemeral'] = parsed_args.ephemeral
+        cloud.boot(name, parsed_args.image, properties)
 
 
 class DeleteServer(command.Command):

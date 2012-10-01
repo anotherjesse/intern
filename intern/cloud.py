@@ -125,22 +125,67 @@ def find_image(name):
     return matches[0]
 
 
-def find_flavor(ram='2GB'):
-    ram = ram.upper()
-    if 'G' in ram:
-        ram = 1024 * int(ram.split('G')[0])
-    elif 'M' in ram:
-        ram = int(ram.split('M')[0])
-    else:
-        ram = int(ram)
+def parse(s, megabyte=True):
+    if s:
+        if type(s) is int:
+            return s
+        if 'G' in s:
+            s = int(s.split('G')[0])
+            if megabyte:
+                return 1024 * s
+            else:
+                return s
+        if 'M' in s:
+            s = int(s.split('M')[0])
+            if megabyte:
+                return s
+            else:
+                return s / 1024
+
+
+def find_flavor(properties=None):
+    if not properties:
+        properties={}
+
+    ram = parse(properties.get('ram'))
+    root = parse(properties.get('root'), False)
+    ephemeral = parse(properties.get('ephemeral'), False)
+    vcpus = parse(properties.get('vcpus'), False)
+
     flavors = nova().flavors.list()
-    matches = [f for f in flavors if f.ram == ram]
-    if len(matches) != 1:
-        print 'Unable to find flavor with size "%s"' % ram
+    if ram:
+        flavors = [f for f in flavors if f.ram == ram]
+    if root:
+        flavors = [f for f in flavors if f.disk == root]
+    if ephemeral:
+        flavors = [f for f in flavors if f.ephemeral == ephemeral]
+    if vcpus:
+        flavors = [f for f in flavors if f.vcpus == vcpus]
+    if len(flavors) > 1:
+        print 'multiple flavors match...'
         for f in flavors:
             print ' -> %s' % f.ram
         sys.exit(1)
-    return matches[0]
+    if len(flavors) == 0:
+        print 'Unable to find flavor matching %s' % properties
+        if ram and vcpus and (root or ephemeral):
+            # FIXME: flavorid needs to be uniq but provided by user :(
+            flavorid = 0
+            name = "intern-%sG-%s-%s/%s" % ((ram/1024), vcpus, root, ephemeral)
+            print 'creating %s' % name
+            f = nova(admin=True).flavors.create(name,
+                                                ram=ram,
+                                                vcpus=vcpus,
+                                                disk=root,
+                                                flavorid=flavorid,
+                                                ephemeral=ephemeral)
+            return f
+        else:
+            print 'not enough parameters to create, current options'
+            for f in nova().flavors.list():
+                print ' -> %s' % f.ram
+            sys.exit(1)
+    return flavors[0]
 
 def delete(name, qty):
     servers = nova().servers.list()
@@ -155,18 +200,9 @@ def delete(name, qty):
 
 user_conn = None
 admin_conn = None
-def nova(user=True):
+def nova(admin=False):
     CONF = utils.load_config("global")
-    if user:
-        global user_conn
-        if not user_conn:
-            CREDS = utils.load_config("user")
-            user_conn = client.Client(CREDS.get('user'),
-                                      CREDS.get('password'),
-                                      CREDS.get('tenant'),
-                                      CONF.get('auth_endpoint'))
-        return user_conn
-    else:
+    if admin:
         global admin_conn
         if not admin_conn:
             CREDS = utils.load_config("admin")
@@ -175,18 +211,27 @@ def nova(user=True):
                                       CREDS.get('tenant'),
                                       CONF.get('auth_endpoint'))
         return admin_conn
+    else:
+        global user_conn
+        if not user_conn:
+            CREDS = utils.load_config("user")
+            user_conn = client.Client(CREDS.get('user'),
+                                      CREDS.get('password'),
+                                      CREDS.get('tenant'),
+                                      CONF.get('auth_endpoint'))
+        return user_conn
 
 
 def list():
     return nova().servers.list()
 
 
-def boot(name, image='quantal', ram='2GB', script=None, ping=True, user=True):
+def boot(name, image='quantal', flavor=None, script=None, ping=True, user=True):
     # FIXME: add image if not present
     image = find_image(image)
     print ' -> Image: %s' % image.name
-    flavor = find_flavor(ram)
-    print ' -> VM: %s ram' % flavor.ram
+    flavor = find_flavor(flavor)
+    print ' -> VM: %s' % flavor.name
     script = "#!/bin/sh\necho ubuntu:ubuntu | chpasswd"
 
     try:

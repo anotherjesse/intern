@@ -26,7 +26,8 @@ setuptools.setup(
     license="Apache License, Version 2.0",
     packages=["intern"],
     install_requires=[
-        "python-novaclient"
+        "python-novaclient",
+        "cliff"
     ],
     scripts=["bin/intern"],
     classifiers=[
