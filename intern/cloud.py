@@ -1,4 +1,5 @@
 import os.path
+import re
 import subprocess
 import time
 
@@ -198,8 +199,12 @@ def find_flavor(properties=None):
     return flavors[0]
 
 def delete(name, qty=1):
+    """delete servers that match regexp name
+
+    as a safegaurd, you must specify many servers you expect to delete"""
+    p = re.compile(name)
     servers = nova().servers.list()
-    matches = [s for s in servers if s.name == name]
+    matches = [s for s in servers if p.match(s.name)]
     if len(matches) != qty:
         found = len(matches)
         print "ERROR: expected %d found %d named '%s'" % (qty, found, name)
