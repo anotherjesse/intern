@@ -153,15 +153,28 @@ def delete(name, qty):
         print "deleting: %s" % s
         nova().servers.delete(s)
 
+user_conn = None
+admin_conn = None
 def nova(user=True):
     CONF = utils.load_config("global")
     if user:
-        CREDS = utils.load_config("user")
+        global user_conn
+        if not user_conn:
+            CREDS = utils.load_config("user")
+            user_conn = client.Client(CREDS.get('user'),
+                                      CREDS.get('password'),
+                                      CREDS.get('tenant'),
+                                      CONF.get('auth_endpoint'))
+        return user_conn
     else:
-        CREDS = utils.load_config("admin")
-
-    return client.Client(CREDS.get('user'), CREDS.get('password'),
-                         CREDS.get('tenant'), CONF.get('auth_endpoint'))
+        global admin_conn
+        if not admin_conn:
+            CREDS = utils.load_config("admin")
+            admin_conn = client.Client(CREDS.get('user'),
+                                      CREDS.get('password'),
+                                      CREDS.get('tenant'),
+                                      CONF.get('auth_endpoint'))
+        return admin_conn
 
 
 def list():
