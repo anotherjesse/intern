@@ -121,12 +121,16 @@ def generate_config():
 
 [cloud]
 auth_endpoint: http://localhost:5000/v2.0/
+
+[user]
 user: demo
 tenant: demo
 password: secrete
-debug: False
-image: 5
-flavor: 3
+
+[admin]
+user: admin
+tenant: admin
+password: secrete
 
 """
 

@@ -113,7 +113,7 @@ if __name__ == "__main__":
     OPTIONS, ARGS = build_options()
     CONF_FILE = OPTIONS.config
 
-    CONFIG = utils.load_config("intern", CONF_FILE)
+    CONFIG = utils.load_config("user", CONF_FILE)
     DEBUG = OPTIONS.debug or CONFIG.get("debug", type="bool")
 
     if OPTIONS.background and not OPTIONS.debug:
