@@ -25,7 +25,6 @@ import sys
 import config
 
 
-
 def logger(name, debug=False):
     """Log handler"""
     log_dir = get_directory("logs")
@@ -67,8 +66,10 @@ def ensure_int(param):
         return None
 
 
-def load_config(section, conf):
+def load_config(section, conf=None):
     """Load a config section"""
+    if not conf:
+        conf = get_home_directory() + "intern.conf"
     return config.Config(conf, section)
 
 
@@ -119,8 +120,9 @@ def generate_config():
     """Generate an example config"""
     example = """# Global Configuration
 
-[cloud]
+[global]
 auth_endpoint: http://localhost:5000/v2.0/
+debug: False
 
 [user]
 user: demo

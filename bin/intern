@@ -16,10 +16,9 @@
 
 """intern - do work for me (run my scripts in the cloud)."""
 
-import optparse
+import logging
 import os
 import sys
-import time
 
 
 INTERN_PATH = os.path.normpath(os.path.join(
@@ -28,107 +27,128 @@ if os.path.exists(os.path.join(INTERN_PATH, "intern", "__init__.py")):
     sys.path.insert(0, INTERN_PATH)
 
 
-from intern import utils
+from intern import cloud
 from intern import version
+
+
+from cliff import app
+from cliff import command
+from cliff import commandmanager
+from cliff import lister
 
 
 __VERSION__ = version.version_string()
 
 
-class IRCConnection():
-    """IRC network connection process"""
-    def __init__(self, irc_network, conf_file):
-        super(IRCConnection, self).__init__()
-        self.irc_network = irc_network
-        self.conf_file = conf_file
+class ListServers(lister.Lister):
+    """Show the virtual machines"""
 
-    def run(self):
-        """IRC network connection"""
-        network_info = utils.load_config(self.irc_network, self.conf_file)
-        log = utils.logger(self.irc_network, DEBUG)
-        reconnect_delay = CONFIG.get("reconnect_delay", type="int")
+    log = logging.getLogger(__name__)
 
-        while True:
-            try:
-                connection = irc.IRC(CONFIG, network_info, log, __VERSION__,
-                        self.conf_file)
-            except Exception, e:
-                log.error(e)
-                log.error("Retrying in %d seconds" % reconnect_delay)
-                time.sleep(reconnect_delay)
-                continue
+    def take_action(self, parsed_args):
+        columns = ('name', 'status', 'network')
 
-            try:
-                connection.start()
-            except KeyboardInterrupt:
-                sys.exit(0)
-            except Exception, e:
-                log.error(e)
-                log.error("Retrying in %d seconds" % reconnect_delay)
-                time.sleep(reconnect_delay)
-                continue
+        results = []
+        for s in cloud.list():
+            results.append([s.name, s.status, 'extract_ip4(s.networks)'])
+        return (columns, results)
 
 
-def network_list(sections):
-    """Prepare the list of IRC networks"""
-    return [net for net in sections if net not in ["intern", "Redmine"]]
+class BootServer(command.Command):
+    """Boot a new VM"""
+
+    log = logging.getLogger(__name__)
+
+    def get_parser(self, name):
+        parser = super(BootServer, self).get_parser(name)
+        parser.add_argument('name', nargs=1)
+        parser.add_argument('image', nargs='?', default='quantal')
+        parser.add_argument('ram', nargs='?', default='2GB')
+        return parser
+
+    def take_action(self, parsed_args):
+        name = parsed_args.name[0]
+        self.log.info('booting %s' % name)
+        cloud.boot(name, parsed_args.image, parsed_args.ram)
 
 
-def build_options():
-    """Generate command line options"""
-    parser = optparse.OptionParser(version=__VERSION__)
+class DeleteServer(command.Command):
+    """destroy all servers of a specific name IF the expected quanity exists"""
 
-    parser.add_option("-c", "--config",
-            default=utils.get_home_directory() + "intern.conf",
-            help="specify the path to a configuration file")
-    parser.add_option("-b", "--background", action="store_true",
-            help="run in the background")
-    parser.add_option("-d", "--debug", action="store_true",
-            help="show debugging output")
+    log = logging.getLogger(__name__)
 
-    return parser.parse_args()
+    def get_parser(self, name):
+        parser = super(DeleteServer, self).get_parser(name)
+        parser.add_argument('name', nargs=1)
+        parser.add_argument('qty', nargs='?', default=1, type=int)
+        return parser
 
-
-def main(ARGS):
-    """Main loop"""
-    filename = ARGS.pop(0)
-    script = open(filename).read()
-    firstboot = "* * * * * root /bin/bash /root/intern.sh\n"
-    userdata="#!/bin/sh\n" + script
-
-    log = utils.logger("intern", DEBUG)
-    from novaclient.v1_1 import client
-    nova = client.Client(CONFIG.get('user'), CONFIG.get('password'), 
-            CONFIG.get('tenant'), CONFIG.get('auth_endpoint'))
-    print nova.servers.create(name="intern %s" % filename,
-        image=CONFIG.get('image'),
-        userdata=userdata,
-        key_name=CONFIG.get('keypair'),
-        files={'/etc/cron.d/firstboot': firstboot,
-               '/root/intern.sh': script},
-        flavor=CONFIG.get('flavor'))
+    def take_action(self, parsed_args):
+        name = parsed_args.name[0]
+        qty = parsed_args.qty
+        servers = c.servers.list()
+        matches = [s for s in servers if s.name == name]
+        if len(matches) != qty:
+            found = len(matches)
+            print "ERROR: expected %d found %d named '%s'" % (qty, found, name)
+            sys.exit(1)
+        for s in matches:
+            print "deleting: %s" % s
+            c.servers.delete(s)
 
 
-if __name__ == "__main__":
-    OPTIONS, ARGS = build_options()
-    CONF_FILE = OPTIONS.config
+class VMApp(app.App):
 
-    CONFIG = utils.load_config("user", CONF_FILE)
-    DEBUG = OPTIONS.debug or CONFIG.get("debug", type="bool")
+    log = logging.getLogger(__name__)
 
-    if OPTIONS.background and not OPTIONS.debug:
-        try:
-            PID = os.fork()
-            if PID == 0:
-                os.setsid()
-                with open(os.devnull, "r+b") as null:
-                    for desc in (0, 1, 2):
-                        try:
-                            os.dup2(null.fileno(), desc)
-                        except OSError:
-                            pass
-                main()
-        except OSError, e:
-            sys.exit(e)
-    else:
-        main(ARGS)
+    def __init__(self):
+        super(VMApp, self).__init__(
+                description='vm manager app',
+                version='0.1',
+                command_manager=commandmanager.CommandManager('vm'),
+                )
+
+    def initialize_app(self, argv):
+        self.command_manager.add_command('list', ListServers)
+        self.command_manager.add_command('boot', BootServer)
+        self.command_manager.add_command('delete', DeleteServer)
+        self.log.debug('initializing app')
+
+    def prepare_to_run_command(self, cmd):
+        self.log.debug('prepare_to_run_command %s', cmd.__class__.__name__)
+
+    def clean_up(self, cmd, result, err):
+        self.log.debug('clean_up %s', cmd.__class__.__name__)
+
+
+class VMApp(app.App):
+
+    log = logging.getLogger(__name__)
+
+    def __init__(self):
+        super(VMApp, self).__init__(
+                description='vm manager app',
+                version='0.1',
+                command_manager=commandmanager.CommandManager('vm'),
+                )
+
+    def initialize_app(self, argv):
+        self.command_manager.add_command('list', ListServers)
+        self.command_manager.add_command('boot', BootServer)
+        self.command_manager.add_command('delete', DeleteServer)
+        self.log.debug('initializing app')
+
+    def prepare_to_run_command(self, cmd):
+        self.log.debug('prepare_to_run_command %s', cmd.__class__.__name__)
+
+    def clean_up(self, cmd, result, err):
+        self.log.debug('clean_up %s', cmd.__class__.__name__)
+
+
+def main(argv=sys.argv[1:]):
+    app = VMApp()
+    return app.run(argv)
+
+
+if __name__ == '__main__':
+    sys.exit(main())
