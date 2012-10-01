@@ -1,6 +1,5 @@
 import os.path
 import subprocess
-import sys
 import time
 
 import paramiko
@@ -121,7 +120,7 @@ def find_image(name):
         print 'Unable to match image name "%s"' % name
         for i in images:
             print ' -> %s' % i.name
-        sys.exit(1)
+        raise Exception('image')
     return matches[0]
 
 
@@ -165,7 +164,7 @@ def find_flavor(properties=None):
         print 'multiple flavors match...'
         for f in flavors:
             print ' -> %s' % f.ram
-        sys.exit(1)
+        raise Exception('flavor')
     if len(flavors) == 0:
         print 'Unable to find flavor matching %s' % properties
         if ram and vcpus and (root or ephemeral):
@@ -184,16 +183,16 @@ def find_flavor(properties=None):
             print 'not enough parameters to create, current options'
             for f in nova().flavors.list():
                 print ' -> %s' % f.ram
-            sys.exit(1)
+            raise Exception('flavor')
     return flavors[0]
 
-def delete(name, qty):
+def delete(name, qty=1):
     servers = nova().servers.list()
     matches = [s for s in servers if s.name == name]
     if len(matches) != qty:
         found = len(matches)
         print "ERROR: expected %d found %d named '%s'" % (qty, found, name)
-        sys.exit(1)
+        raise Exception('delete')
     for s in matches:
         print "deleting: %s" % s
         nova().servers.delete(s)
@@ -240,7 +239,7 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True, user=True):
     except:
         key = None
 
-    userdata = cloudconfig({'apt_proxy': 'http://10.0.0.1:3142',
+    userdata = cloudconfig({'apt_proxy': 'http://10.0.0.73:3142',
                             'ssh_key': key,
                             'hostname': name,
                             'script': script})
@@ -273,4 +272,4 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True, user=True):
         wait_for_ping(ip4)
 
     print 'success'
-    return VM(ip4)
+    return VM(s)
