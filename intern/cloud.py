@@ -104,12 +104,13 @@ class VM(object):
         else:
             raise Exception('connect')
 
-    def put(self, path, content):
+    def put(self, path, content, mode=None):
         """upload a text file to the remote server"""
         if self.connect():
             sftp = self.ssh.open_sftp()
             resp = sftp.open(path, 'w').write(content)
-            print resp
+            if mode:
+                sftp.chmod(path, mode)
             sftp.close()
             return resp
         else:
@@ -141,9 +142,9 @@ class Cluster(object):
         for vm in self:
             vm.run(cmd)
 
-    def put(self, path, content):
+    def put(self, path, content, mode=None):
         for vm in self:
-            vm.put(path, content)
+            vm.put(path, content, mode=None)
 
     def get(self, path):
         for vm in self:
