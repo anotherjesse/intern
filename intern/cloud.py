@@ -112,11 +112,12 @@ def find_flavor(properties=None):
             raise Exception('flavor')
     return flavors[0]
 
+
 def delete(name, qty=1):
     """delete servers that match regexp name
 
     as a safegaurd, you must specify many servers you expect to delete"""
-    servers = nova().servers.list(name)
+    servers = find(name)
     if len(servers) != qty:
         found = len(servers)
         print "ERROR: expected %d found %d named '%s'" % (qty, found, name)
@@ -126,7 +127,7 @@ def delete(name, qty=1):
         nova().servers.delete(s)
 
 
-def list(regex=None):
+def find(regex=None):
     servers = [vm.VM(s) for s in nova().servers.list()]
     if regex:
         p = re.compile(regex)

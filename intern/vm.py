@@ -14,6 +14,12 @@ class VM(object):
         return utils.extract_ip4(self.server.networks)
 
     @property
+    def floating_ip(self):
+        # What the heck?  floating ips are the second private ip?
+        if len(self.server.networks['private']) > 1:
+            return self.server.networks['private'][1]
+
+    @property
     def name(self):
         return self.server.name
 

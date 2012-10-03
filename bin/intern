@@ -49,7 +49,7 @@ class ListServers(lister.Lister):
         columns = ('name', 'status', 'network')
 
         results = []
-        for s in cloud.list():
+        for s in cloud.find():
             results.append([s.name, s.status, s.ip])
         return (columns, results)
 
