@@ -234,14 +234,12 @@ def delete(name, qty=1):
     """delete servers that match regexp name
 
     as a safegaurd, you must specify many servers you expect to delete"""
-    p = re.compile(name)
-    servers = nova().servers.list()
-    matches = [s for s in servers if p.match(s.name)]
-    if len(matches) != qty:
-        found = len(matches)
+    servers = nova().servers.list(name)
+    if len(servers) != qty:
+        found = len(servers)
         print "ERROR: expected %d found %d named '%s'" % (qty, found, name)
         raise Exception('delete')
-    for s in matches:
+    for s in servers:
         print "deleting: %s" % s
         nova().servers.delete(s)
 
@@ -269,12 +267,29 @@ def nova(admin=False):
         return user_conn
 
 
-def list():
-    return [VM(s) for s in nova().servers.list()]
+def list(regex=None):
+    servers = [VM(s) for s in nova().servers.list()]
+    if regex:
+        p = re.compile(regex)
+        servers = [vm for vm in servers if p.match(vm.name)]
+    return servers
 
 
 def boot(name, image='quantal', flavor=None, script=None, ping=True,
-         user=True, packages=None, apt_proxy=None):
+         packages=None, apt_proxy=None, floating_ip=None):
+    """boot a VM with properties:
+
+      * name: name of the VM
+      * image: name of image to use
+      * flavor: dict of flavor properties - create a flavor if none exists
+      * apt_proxy: configure cloud-init enabled VMs for an apt_proxy
+      *            pass either the http string or True to use global config
+      * packages: list of apt packages to install
+      * script: shell script to run on boot
+      * ping: return from boot command only after ping to VM succeeds
+      * floating_ip: True: grab an unassociated IP or allocate an IP
+      *              or if a specific IP is passed, use it
+    * """
     # FIXME: add image if not present
     image = find_image(image)
     print ' -> Image: %s' % image.name
@@ -287,9 +302,14 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
     except:
         key = None
 
-    if apt_proxy is None:
-        CONF = utils.load_config("global")
-        apt_proxy = CONF.get('apt_proxy')
+    # IDEA: in addition to passing True or http://example, pass the name
+    # of a host and we convert it to an ip?
+    if apt_proxy is True:
+         CONF = utils.load_config("global")
+         apt_proxy = CONF.get('apt_proxy')
+
+    if floating_ip:
+        raise Exception('unimplemented')
 
     userdata = cloudconfig({'apt_proxy': apt_proxy,
                             'ssh_key': key,
