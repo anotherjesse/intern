@@ -57,6 +57,21 @@ def wait_for_ping(ip):
 ##############
 
 
+def find(pattern=None):
+    """Find all server, optionally matching a pattern
+
+    The server name must match the pattern
+
+    pattern: j   server: 'applejacks'   -> NO
+    pattern: j-? server: 'j-1'          -> YES
+    """
+    servers = [vm.VM(s) for s in nova().servers.list()]
+    if pattern:
+        p = re.compile('^%s$' % pattern)
+        servers = [s for s in servers if p.match(s.name)]
+    return servers
+
+
 def find_image(name):
     images = nova().images.list()
     matches = [i for i in images if name in i.name]
@@ -125,14 +140,6 @@ def delete(name, qty=1):
     for s in servers:
         print "deleting: %s" % s
         nova().servers.delete(s)
-
-
-def find(regex=None):
-    servers = [vm.VM(s) for s in nova().servers.list()]
-    if regex:
-        p = re.compile(regex)
-        servers = [s for s in servers if p.match(s.name)]
-    return servers
 
 
 def boot(name, image='quantal', flavor=None, script=None, ping=True,
@@ -204,6 +211,8 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
     while ip4 is None:
         time.sleep(1)
         s = nova().servers.get(s)
+        if s.state == 'ERROR':
+            raise Exception('errored')
         ip4 = utils.extract_ip4(s.networks)
 
     print 'IP: %s' % ip4
