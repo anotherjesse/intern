@@ -167,8 +167,16 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
          CONF = utils.load_config("global")
          apt_proxy = CONF.get('apt_proxy')
 
-    #if floating_ip:
-    #    raise Exception('unimplemented')
+    if floating_ip is True:
+        # Find an unused IP or get one...
+        # FIXME - allow a user to send an IP
+        ips = nova().floating_ips.list()
+        unused = [i for i in ips if i.instance_id is None]
+        if len(unused) == 0:
+            fip = nova().floating_ips.create()
+        else:
+            fip = unused[0]
+        print " -> floating ip: %s" % fip.ip
 
     userdata = cloudinit.cloudconfig({'apt_proxy': apt_proxy,
                                       'ssh_key': key,
@@ -198,6 +206,9 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
         ip4 = utils.extract_ip4(s.networks)
 
     print 'IP: %s' % ip4
+
+    if floating_ip is True:
+        s.add_floating_ip(fip)
 
     if ping:
         print 'waiting for network (ping) ...'
