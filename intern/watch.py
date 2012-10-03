@@ -69,6 +69,7 @@ def update_vms(vms):
             vms[s.id] = {
                 'name': s.name,
                 'kind': 'vm',
+                'state': s.status,
                 'user': user,
                 'host': host,
                 'tenant': tenant
@@ -85,6 +86,17 @@ def log(kind, obj):
     # http://code.google.com/p/gource/wiki/CustomLogFormat
     timestamp = int(time.time())
     # kind should be (A)dded, (M)odified or (D)eleted
-    print "%d|%s|%s|%s/%s/%s" % (timestamp, obj['user'], kind, obj['host'], obj['tenant'], obj['name'])
+    color = 'FFFFFF'
+    if obj['state'] == 'ERROR':
+        color = 'FF0000'
+    elif obj['state'] == 'ACTIVE':
+        color = '00FF00'
+    elif obj['state'] == 'SUSPENDED':
+        color = '0000FF'
+    elif obj['state'] == 'SHUTOFF':
+        color = '555555'
+    else:
+        print obj['state']
+    print "%d|%s|%s|%s/%s/%s|%s" % (timestamp, obj['user'], kind, obj['host'], obj['tenant'], obj['name'], color)
     sys.stdout.flush()
 
