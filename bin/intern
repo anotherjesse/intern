@@ -19,6 +19,7 @@
 import logging
 import os
 import sys
+import time
 
 
 INTERN_PATH = os.path.normpath(os.path.join(
@@ -29,6 +30,7 @@ if os.path.exists(os.path.join(INTERN_PATH, "intern", "__init__.py")):
 
 from intern import cloud
 from intern import version
+from intern import watch
 
 
 from cliff import app
@@ -52,6 +54,23 @@ class ListServers(lister.Lister):
         for s in cloud.find():
             results.append([s.name, s.status, s.ips])
         return (columns, results)
+
+
+class Watcher(command.Command):
+    """Gource it up baby"""
+
+    log = logging.getLogger(__name__)
+
+    def get_parser(self, name):
+        parser = super(Watcher, self).get_parser(name)
+        parser.add_argument('delay', nargs='?', default=1)
+        return parser
+
+    def take_action(self, parsed_args):
+        vms = {}
+        while True:
+            watch.update_vms(vms)
+            time.sleep(parsed_args.delay)
 
 
 class BootServer(command.Command):
@@ -138,6 +157,7 @@ class VMApp(app.App):
 
     def initialize_app(self, argv):
         self.command_manager.add_command('list', ListServers)
+        self.command_manager.add_command('watch', Watcher)
         self.command_manager.add_command('boot', BootServer)
         self.command_manager.add_command('delete', DeleteServer)
         self.log.debug('initializing app')
