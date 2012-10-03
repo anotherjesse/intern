@@ -24,6 +24,7 @@ from intern import cloud
 from keystoneclient.v2_0 import client as keystone_client
 
 search_opts = {'all_tenants': 1}
+show_host = True
 
 admin_key = None
 user_key = None
@@ -58,11 +59,18 @@ def update_vms(vms):
         new_vms.append(s.id)
         if s.id not in old_vms:
             tenant = tenant_name(s.tenant_id)
+            host = s._info['OS-EXT-SRV-ATTR:host']
+            try:
+                parts = host.split('-')
+                host = '%s/%s' % (parts[1], parts[0])
+            except:
+                pass
             user = user_name(s.user_id)
             vms[s.id] = {
                 'name': s.name,
                 'kind': 'vm',
                 'user': user,
+                'host': host,
                 'tenant': tenant
             }
             log("A", vms[s.id])
@@ -77,6 +85,6 @@ def log(kind, obj):
     # http://code.google.com/p/gource/wiki/CustomLogFormat
     timestamp = int(time.time())
     # kind should be (A)dded, (M)odified or (D)eleted
-    print "%d|%s|%s|%s/%s" % (timestamp, obj['user'], kind, obj['tenant'], obj['name'])
+    print "%d|%s|%s|%s/%s/%s" % (timestamp, obj['user'], kind, obj['host'], obj['tenant'], obj['name'])
     sys.stdout.flush()
 

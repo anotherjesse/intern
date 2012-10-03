@@ -26,6 +26,3 @@ Go:
  * list user servers: ``intern list``
  * delete 3 servers matching go-? pattern: ``intern delete go-? 3``
  * viz a cloud: ``intern watch | gource --realtime --log-format custom -i 3600 -``
-
-
-
