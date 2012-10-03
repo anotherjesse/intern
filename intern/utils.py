@@ -165,3 +165,17 @@ password: secrete
         f.write(example)
     f.closed
     print "Done"
+
+
+def extract_ip4(networks, kind=None):
+    try:
+        if kind:
+            kinds = [kind]
+        else:
+            kinds = networks.keys()
+        for kind in kinds:
+            ips = [n for n in networks[kind] if len(n) < 16]
+            if len(ips) > 0:
+                return ips[0]
+    except:
+        pass

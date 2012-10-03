@@ -3,27 +3,39 @@ import re
 import subprocess
 import time
 
-import paramiko
 from novaclient.v1_1 import client
+from intern import cloudinit
 from intern import utils
+from intern import vm
 
 
 ##########
 # Helpers
 ##########
 
-def extract_ip4(networks, kind=None):
-    try:
-        if kind:
-            kinds = [kind]
-        else:
-            kinds = networks.keys()
-        for kind in kinds:
-            ips = [n for n in networks[kind] if len(n) < 16]
-            if len(ips) > 0:
-                return ips[0]
-    except:
-        pass
+
+user_conn = None
+admin_conn = None
+def nova(admin=False):
+    CONF = utils.load_config("global")
+    if admin:
+        global admin_conn
+        if not admin_conn:
+            CREDS = utils.load_config("admin")
+            admin_conn = client.Client(CREDS.get('user'),
+                                      CREDS.get('password'),
+                                      CREDS.get('tenant'),
+                                      CONF.get('auth_endpoint'))
+        return admin_conn
+    else:
+        global user_conn
+        if not user_conn:
+            CREDS = utils.load_config("user")
+            user_conn = client.Client(CREDS.get('user'),
+                                      CREDS.get('password'),
+                                      CREDS.get('tenant'),
+                                      CONF.get('auth_endpoint'))
+        return user_conn
 
 
 def ping(ip):
@@ -39,140 +51,10 @@ def wait_for_ping(ip):
         time.sleep(1)
 
 
-class VM(object):
-
-    def __init__(self, server):
-        self.server = server
-        self.ssh = None
-
-    @property
-    def ip(self):
-        return extract_ip4(self.server.networks)
-
-    @property
-    def name(self):
-        return self.server.name
-
-    @property
-    def status(self):
-        # FIXME: should this refresh?
-        return self.server.status
-
-    def __str__(self):
-        return '<VM "%s">' % self.server.name
-
-    def connect(self, max_tries=1):
-        if self.ssh:
-            return True
-        #print "attempting to connect to %s" % self.ip
-        key = paramiko.RSAKey.from_private_key_file('/home/jesse/.ssh/id_rsa')
-        tries = 0
-        while(True):
-            try:
-                c = paramiko.SSHClient()
-                c.set_missing_host_key_policy(paramiko.WarningPolicy())
-                c.connect(self.ip, username='ubuntu', pkey=key, timeout=1)
-                self.ssh = c
-                return True
-            except (paramiko.AuthenticationException, paramiko.SSHException):
-                #print "unable to connect to %s" % self.ip
-                tries += 1
-                if tries > max_tries:
-                    raise
-
-    def wait_for_ssh(self):
-        while True:
-            try:
-                self.connect()
-                self.run('uptime')
-                return
-            except:
-                pass
-
-    def run(self, cmd, max_tries=1):
-        if self.connect(max_tries):
-            stdin, stdout, stderr = self.ssh.exec_command(cmd)
-            return stdout.read()
-
-    def get(self, path):
-        """return a string that is the content of a remote file"""
-        if self.connect():
-            sftp = self.ssh.open_sftp()
-            resp = sftp.open(path).read()
-            sftp.close()
-            return resp
-        else:
-            raise Exception('connect')
-
-    def put(self, path, content, mode=None):
-        """upload a text file to the remote server"""
-        if self.connect():
-            sftp = self.ssh.open_sftp()
-            resp = sftp.open(path, 'w').write(content)
-            if mode:
-                sftp.chmod(path, mode)
-            sftp.close()
-            return resp
-        else:
-            raise Exception('connect')
-
-
-class Cluster(object):
-
-    def __init__(self, vms=None):
-        if vms:
-            self.vms = vms
-        else:
-            self.vms = {}
-
-    def __setitem__(self, k, v):
-        self.vms[k] = v
-
-    def __len__(self):
-        return len(self.vms)
-
-    def __iter__(self):
-        return self.vms.itervalues()
-
-    def wait_for_ssh(self):
-        for vm in self:
-            vm.wait_for_ssh()
-
-    def run(self, cmd):
-        for vm in self:
-            vm.run(cmd)
-
-    def put(self, path, content, mode=None):
-        for vm in self:
-            vm.put(path, content, mode=None)
-
-    def get(self, path):
-        for vm in self:
-            yield vm.get(path)
-
 
 ##############
 # cloud logic
 ##############
-
-
-def cloudconfig(options):
-    lines = ['#cloud-config']
-    if 'ssh_key' in options:
-        lines.append('ssh_authorized_keys:\n - %s' % options['ssh_key'])
-    if 'packages' in options:
-        lines.append('packages:')
-        for p in options['packages']:
-            lines.append(' - %s' % p)
-    if 'apt_proxy' in options:
-        lines.append('apt_proxy: %s' % options['apt_proxy'])
-    if 'hostname' in options:
-        lines.append('hostname: %s' % options['hostname'])
-    if options.get('script', None):
-        lines.append('runcmd:\n - |')
-        for l in options['script'].split('\n'):
-            lines.append('  %s' % l)
-    return '\n'.join(lines)
 
 
 def find_image(name):
@@ -243,35 +125,12 @@ def delete(name, qty=1):
         print "deleting: %s" % s
         nova().servers.delete(s)
 
-user_conn = None
-admin_conn = None
-def nova(admin=False):
-    CONF = utils.load_config("global")
-    if admin:
-        global admin_conn
-        if not admin_conn:
-            CREDS = utils.load_config("admin")
-            admin_conn = client.Client(CREDS.get('user'),
-                                      CREDS.get('password'),
-                                      CREDS.get('tenant'),
-                                      CONF.get('auth_endpoint'))
-        return admin_conn
-    else:
-        global user_conn
-        if not user_conn:
-            CREDS = utils.load_config("user")
-            user_conn = client.Client(CREDS.get('user'),
-                                      CREDS.get('password'),
-                                      CREDS.get('tenant'),
-                                      CONF.get('auth_endpoint'))
-        return user_conn
-
 
 def list(regex=None):
-    servers = [VM(s) for s in nova().servers.list()]
+    servers = [vm.VM(s) for s in nova().servers.list()]
     if regex:
         p = re.compile(regex)
-        servers = [vm for vm in servers if p.match(vm.name)]
+        servers = [s for s in servers if p.match(s.name)]
     return servers
 
 
@@ -308,14 +167,14 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
          CONF = utils.load_config("global")
          apt_proxy = CONF.get('apt_proxy')
 
-    if floating_ip:
-        raise Exception('unimplemented')
+    #if floating_ip:
+    #    raise Exception('unimplemented')
 
-    userdata = cloudconfig({'apt_proxy': apt_proxy,
-                            'ssh_key': key,
-                            'hostname': name,
-                            'packages': packages,
-                            'script': script})
+    userdata = cloudinit.cloudconfig({'apt_proxy': apt_proxy,
+                                      'ssh_key': key,
+                                      'hostname': name,
+                                      'packages': packages,
+                                      'script': script})
     #meta = {
     #    'dsmode': 'local',
     #}
@@ -336,7 +195,7 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
     while ip4 is None:
         time.sleep(1)
         s = nova().servers.get(s)
-        ip4 = extract_ip4(s.networks)
+        ip4 = utils.extract_ip4(s.networks)
 
     print 'IP: %s' % ip4
 
@@ -345,4 +204,4 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
         wait_for_ping(ip4)
 
     print 'success'
-    return VM(s)
+    return vm.VM(s)

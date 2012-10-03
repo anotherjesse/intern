@@ -47,9 +47,9 @@ def version_string():
     """Return the full version"""
     git_hash = current_git_hash()
     if git_hash:
-        return "intern v%s (%s) - http://intern.devstack.org" % (__VERSION__, git_hash)
+        return "intern v%s (%s)" % (__VERSION__, git_hash)
 
-    return "intern v%s - http://intern.devstack.org" % __VERSION__
+    return "intern v%s" % __VERSION__
 
 
 def version_hash():
