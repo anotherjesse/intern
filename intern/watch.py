@@ -57,7 +57,7 @@ def update_vms(vms):
     # First add anything that exists now
     for s in servers:
         new_vms.append(s.id)
-        if s.id not in old_vms:
+        if s.id not in old_vms or vms[s.id]['state'] != s.status:
             tenant = tenant_name(s.tenant_id)
             host = s._info['OS-EXT-SRV-ATTR:host']
             try:
@@ -74,7 +74,11 @@ def update_vms(vms):
                 'host': host,
                 'tenant': tenant
             }
-            log("A", vms[s.id])
+            if host:
+                if s.id in old_vms:
+                    log("M", vms[s.id])
+                else:
+                    log("A", vms[s.id])
 
     # Remove anything that used to exist
     for id in old_vms:
