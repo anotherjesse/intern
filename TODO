@@ -1,0 +1,2 @@
+* rc command so I can: source `intern rc` and use the regular nova cli
+* log command that tails console log of a vm

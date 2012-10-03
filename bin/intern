@@ -50,7 +50,7 @@ class ListServers(lister.Lister):
 
         results = []
         for s in cloud.find():
-            results.append([s.name, s.status, s.ip])
+            results.append([s.name, s.status, s.ips])
         return (columns, results)
 
 
