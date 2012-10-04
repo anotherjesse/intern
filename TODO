@@ -1,2 +1,2 @@
-* rc command so I can: source `intern rc` and use the regular nova cli
+* allow flavor to be a string
 * log command that tails console log of a vm
