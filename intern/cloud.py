@@ -139,7 +139,7 @@ def delete(name, qty=1):
         raise Exception('delete')
     for s in servers:
         print "deleting: %s" % s
-        nova().servers.delete(s)
+        nova().servers.delete(s.id)
 
 
 def boot(name, image='quantal', flavor=None, script=None, ping=True,

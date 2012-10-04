@@ -10,6 +10,10 @@ class VM(object):
         self.ssh = None
 
     @property
+    def id(self):
+        return self.server.id
+
+    @property
     def ip(self):
         return utils.extract_ip4(self.server.networks)
 
