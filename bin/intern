@@ -29,6 +29,7 @@ if os.path.exists(os.path.join(INTERN_PATH, "intern", "__init__.py")):
 
 
 from intern import cloud
+from intern import utils
 from intern import version
 from intern import watch
 
@@ -71,6 +72,29 @@ class Watcher(command.Command):
         while True:
             watch.update_vms(vms)
             time.sleep(parsed_args.delay)
+
+
+class BuildRC(command.Command):
+    """Boot a new VM"""
+
+    log = logging.getLogger(__name__)
+
+    def get_parser(self, name):
+        parser = super(BuildRC, self).get_parser(name)
+        parser.add_argument('--admin', action='store_true', default=False)
+        return parser
+
+    def take_action(self, parsed_args):
+        CONF = utils.load_config("global")
+        if parsed_args.admin:
+            CREDS = utils.load_config("admin")
+        else:
+            CREDS = utils.load_config("user")
+
+        print 'export OS_USERNAME=%s' % CREDS.get('user')
+        print 'export OS_PASSWORD=%s' % CREDS.get('password')
+        print 'export OS_TENANT_NAME=%s' % CREDS.get('tenant')
+        print 'export OS_AUTH_URL=%s' % CONF.get('auth_endpoint')
 
 
 class BootServer(command.Command):
@@ -156,6 +180,7 @@ class VMApp(app.App):
                 )
 
     def initialize_app(self, argv):
+        self.command_manager.add_command('rc', BuildRC)
         self.command_manager.add_command('list', ListServers)
         self.command_manager.add_command('watch', Watcher)
         self.command_manager.add_command('boot', BootServer)
