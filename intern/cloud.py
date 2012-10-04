@@ -211,7 +211,7 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
     while ip4 is None:
         time.sleep(1)
         s = nova().servers.get(s)
-        if s.state == 'ERROR':
+        if s.status == 'ERROR':
             raise Exception('errored')
         ip4 = utils.extract_ip4(s.networks)
 
