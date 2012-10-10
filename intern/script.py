@@ -19,6 +19,11 @@ class Script(object):
         content = open(src, 'r').read()
         self.put(dest, content, mode)
 
+    def preseed(self, val):
+        """find options debian/pkg.config or debian/pkg.templates"""
+        cmd = "cat <<EOF | sudo debconf-set-selections\n%s\nEOF" % (val)
+        self.tasks.append(cmd)
+
     def bundle(self):
         return "#!/bin/sh\n\n%s" % ("\n\n".join(self.tasks))
 

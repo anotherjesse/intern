@@ -1,4 +1,5 @@
 from cloud import utils
+import cloud
 
 import paramiko
 
@@ -20,6 +21,9 @@ class VM(object):
     @property
     def ips(self):
         return ' '.join(sum(self.server.networks.values(), []))
+
+    def update(self):
+        self.server = cloud.nova().servers.get(self.server)
 
     @property
     def floating_ip(self):
