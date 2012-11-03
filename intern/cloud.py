@@ -143,7 +143,7 @@ def delete(name, qty=1):
 
 
 def boot(name, image='quantal', flavor=None, script=None, ping=True,
-         packages=None, apt_proxy=None, floating_ip=None):
+         packages=None, apt_proxy=None, floating_ip=None, meta=None):
     """boot a VM with properties:
 
       * name: name of the VM
@@ -191,14 +191,11 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
                                       'hostname': name,
                                       'packages': packages,
                                       'script': script})
-    #meta = {
-    #    'dsmode': 'local',
-    #}
 
     s = nova().servers.create(name,
                          image.id,
                          flavor.id,
-                         #meta=meta,
+                         meta=meta,
                          #nic='net-id=82559d25-78e9-44f5-a1e2-3e8f735056c0',
                          userdata=userdata)
                          #config_drive=True)

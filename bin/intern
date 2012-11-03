@@ -105,7 +105,7 @@ class BootServer(command.Command):
     def get_parser(self, name):
         parser = super(BootServer, self).get_parser(name)
         parser.add_argument('name', nargs=1)
-        parser.add_argument('image', nargs='?', default='Ubuntu 12.04 cloudimg amd64')
+        parser.add_argument('image', nargs='?', default='quantal')
         parser.add_argument('--ram', nargs='?', default='2GB')
         parser.add_argument('--vcpus', nargs='?', type=int)
         parser.add_argument('--root', nargs='?', type=int)
