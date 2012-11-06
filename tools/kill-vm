@@ -3,23 +3,25 @@
 import sys
 import time
 
-import dmenu
+import chooser
 import intern.cloud
 
 vms = intern.cloud.find()
 if len(vms) == 0:
+    print 'no servers running'
     sys.exit(1)
 
 names = [vm.name for vm in vms]
-name = dmenu.dmenu(names, prompt="Kill:")
+name = chooser.choose('killer', names)
 
 if not name:
+    print 'no server selected'
     sys.exit(1)
 
 print 'killing VMs named %s' % name
 
 for vm in vms:
     if vm.name == name:
-        print vm.delete()
+        vm.delete()
 
 time.sleep(0.5)
