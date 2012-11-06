@@ -7,8 +7,11 @@ import dmenu
 import intern.cloud
 
 vms = intern.cloud.find()
+if len(vms) == 0:
+    sys.exit(1)
+
 names = [vm.name for vm in vms]
-name = dmenu.dmenu(names)
+name = dmenu.dmenu(names, prompt="Kill:")
 
 if not name:
     sys.exit(1)
