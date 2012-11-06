@@ -21,6 +21,7 @@ import time
 import sys
 
 from intern import cloud
+from intern import conn
 from keystoneclient.v2_0 import client as keystone_client
 
 search_opts = {'all_tenants': 1}
@@ -53,7 +54,7 @@ def user_name(user_id):
 def update_vms(vms):
     old_vms = vms.keys()
     new_vms = []
-    servers = cloud.nova(True).servers.list(search_opts=search_opts)
+    servers = conn.nova(True).servers.list(search_opts=search_opts)
     # First add anything that exists now
     for s in servers:
         new_vms.append(s.id)

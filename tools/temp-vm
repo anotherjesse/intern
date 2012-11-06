@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+
+import subprocess
+import uuid
+import intern.cloud
+
+name = 'temp-%s' % uuid.uuid4()
+# FIXME(ja): flavor/image/apt_proxy should be in intern.conf defaults
+flavor = {'ram': '2GB'}
+image = 'quantal'
+
+print '[launching] %s' % name
+vm = intern.cloud.boot(name, image, flavor, apt_proxy=True)
+vm.wait_for_ssh()
+
+subprocess.call("ssh %s.vm" % name, shell=True)
+
+print '[deleting] %s' % name
+
+# FIXME(ja): todo - catch exit and call vm.delete?
+vm.delete()

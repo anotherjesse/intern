@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+
+import subprocess
+import sys
+
+import dmenu
+import intern.cloud
+
+vms = intern.cloud.find()
+names = [vm.name for vm in vms]
+name = dmenu.dmenu(names)
+
+if not name:
+    sys.exit(1)
+
+if name not in names:
+    # FIXME(ja): flavor/image/apt_proxy should be in intern.conf defaults
+    flavor = {'ram': '2GB'}
+    image = 'quantal'
+
+    packages = None
+    if ' ' in name:
+        name, options = name.split(' ')
+        packages = options.split(',')
+
+    vm = intern.cloud.boot(name, image, flavor, apt_proxy=True, packages=packages)
+    vm.wait_for_ssh()
+
+subprocess.call("ssh %s.vm" % name, shell=True)

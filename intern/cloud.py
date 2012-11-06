@@ -3,39 +3,15 @@ import re
 import subprocess
 import time
 
-from novaclient.v1_1 import client
 from intern import cloudinit
 from intern import utils
 from intern import vm
+from intern import conn
 
 
 ##########
 # Helpers
 ##########
-
-
-user_conn = None
-admin_conn = None
-def nova(admin=False):
-    CONF = utils.load_config("global")
-    if admin:
-        global admin_conn
-        if not admin_conn:
-            CREDS = utils.load_config("admin")
-            admin_conn = client.Client(CREDS.get('user'),
-                                      CREDS.get('password'),
-                                      CREDS.get('tenant'),
-                                      CONF.get('auth_endpoint'))
-        return admin_conn
-    else:
-        global user_conn
-        if not user_conn:
-            CREDS = utils.load_config("user")
-            user_conn = client.Client(CREDS.get('user'),
-                                      CREDS.get('password'),
-                                      CREDS.get('tenant'),
-                                      CONF.get('auth_endpoint'))
-        return user_conn
 
 
 def ping(ip):
@@ -65,7 +41,7 @@ def find(pattern=None):
     pattern: j   server: 'applejacks'   -> NO
     pattern: j-? server: 'j-1'          -> YES
     """
-    servers = [vm.VM(s) for s in nova().servers.list()]
+    servers = [vm.VM(s) for s in conn.nova().servers.list()]
     if pattern:
         p = re.compile('^%s$' % pattern)
         servers = [s for s in servers if p.match(s.name)]
@@ -73,7 +49,7 @@ def find(pattern=None):
 
 
 def find_image(name):
-    images = nova().images.list()
+    images = conn.nova().images.list()
     matches = [i for i in images if name in i.name]
     if len(matches) != 1:
         print 'Unable to match image name "%s"' % name
@@ -92,7 +68,7 @@ def find_flavor(properties=None):
     ephemeral = utils.parse(properties.get('ephemeral'), False)
     vcpus = utils.parse(properties.get('vcpus'), False)
 
-    flavors = nova().flavors.list()
+    flavors = conn.nova().flavors.list()
     if ram:
         flavors = [f for f in flavors if f.ram == ram]
     if root:
@@ -104,7 +80,7 @@ def find_flavor(properties=None):
     if len(flavors) > 1:
         print 'multiple flavors match...'
         for f in flavors:
-            print ' -> %s' % f.ram
+            print ' %s -> %s %s %s %s' % (f.name, f.ram, f.disk, f.ephemeral, f.vcpus)
         raise Exception('flavor')
     if len(flavors) == 0:
         print 'Unable to find flavor matching %s' % properties
@@ -113,7 +89,7 @@ def find_flavor(properties=None):
             flavorid = 0
             name = "intern-%sG-%s-%s/%s" % ((ram/1024), vcpus, root, ephemeral)
             print 'creating %s' % name
-            f = nova(admin=True).flavors.create(name,
+            f = conn.nova(admin=True).flavors.create(name,
                                                 ram=ram,
                                                 vcpus=vcpus,
                                                 disk=root,
@@ -122,8 +98,8 @@ def find_flavor(properties=None):
             return f
         else:
             print 'not enough parameters to create, current options'
-            for f in nova().flavors.list():
-                print ' -> %s' % f.ram
+            for f in conn.nova().flavors.list():
+                print ' %s -> %s %s %s %s' % (f.name, f.ram, f.disk, f.ephemeral, f.vcpus)
             raise Exception('flavor')
     return flavors[0]
 
@@ -139,7 +115,7 @@ def delete(name, qty=1):
         raise Exception('delete')
     for s in servers:
         print "deleting: %s" % s
-        nova().servers.delete(s.id)
+        conn.nova().servers.delete(s.id)
 
 
 def boot(name, image='quantal', flavor=None, script=None, ping=True,
@@ -178,10 +154,10 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
     if floating_ip is True:
         # Find an unused IP or get one...
         # FIXME - allow a user to send an IP
-        ips = nova().floating_ips.list()
+        ips = conn.nova().floating_ips.list()
         unused = [i for i in ips if i.instance_id is None]
         if len(unused) == 0:
-            fip = nova().floating_ips.create()
+            fip = conn.nova().floating_ips.create()
         else:
             fip = unused[0]
         print " -> floating ip: %s" % fip.ip
@@ -192,7 +168,7 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
                                       'packages': packages,
                                       'script': script})
 
-    s = nova().servers.create(name,
+    s = conn.nova().servers.create(name,
                          image.id,
                          flavor.id,
                          meta=meta,
@@ -207,7 +183,7 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
     ip4 = None
     while ip4 is None:
         time.sleep(1)
-        s = nova().servers.get(s)
+        s = conn.nova().servers.get(s)
         if s.status == 'ERROR':
             raise Exception('errored')
         ip4 = utils.extract_ip4(s.networks)

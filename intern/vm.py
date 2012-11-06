@@ -1,5 +1,5 @@
-from cloud import utils
-import cloud
+from intern import conn
+from intern import utils
 
 import paramiko
 
@@ -18,12 +18,15 @@ class VM(object):
     def ip(self):
         return utils.extract_ip4(self.server.networks)
 
+    def delete(self):
+        conn.nova().servers.delete(self.server.id)
+
     @property
     def ips(self):
         return ' '.join(sum(self.server.networks.values(), []))
 
     def update(self):
-        self.server = cloud.nova().servers.get(self.server)
+        self.server = conn.nova().servers.get(self.server)
 
     @property
     def floating_ip(self):
