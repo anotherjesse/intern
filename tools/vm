@@ -3,12 +3,12 @@
 import subprocess
 import sys
 
-import dmenu
+import chooser
 import intern.cloud
 
 vms = intern.cloud.find()
 names = [vm.name for vm in vms]
-name = dmenu.dmenu(names)
+name = chooser.choose('VM:', names)
 
 if not name:
     sys.exit(1)

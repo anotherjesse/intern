@@ -12,10 +12,12 @@ class Chooser(object):
     startPos = 0
     selection = 0
 
-    def __init__(self, title, data):
-        self.title = title
+    def __init__(self, prompt, data):
+        self.prompt = prompt
         self.data = data
         self.stdscr = None
+        self.match = ''
+        self.filtered = data
 
     def setup(self, stdscr):
         self.stdscr = stdscr
@@ -55,7 +57,7 @@ class Chooser(object):
         curses.doupdate()
 
     def initHead(self):
-        self.headWin.addstr(0, 0, self.title)
+        self.headWin.addstr(0, 0, self.prompt + ' ' + self.match)
         rightStr = "intern"
         self.headWin.addstr(0, self.maxX - len(rightStr) - 1, rightStr)
         self.headWin.bkgd(' ', curses.color_pair(0))
@@ -65,6 +67,17 @@ class Chooser(object):
         self.bodyMaxY, self.bodyMaxX = self.bodyWin.getmaxyx()
         self.bodyWin.noutrefresh()
         self.refreshBody()
+
+    def update_matched(self, match):
+        self.match = match
+        self.filtered = [n for n in self.data if self.match in n]
+        self.setSelection(self.selection)
+        self.refreshHead()
+        self.refreshBody()
+
+    def refreshHead(self):
+        self.headWin.erase()
+        self.initHead()
 
     def refreshBody(self):
         self.bodyWin.erase()
@@ -76,7 +89,7 @@ class Chooser(object):
             if(idx > maxDisplay):
                 break
             try:
-                name = self.data[idx + self.startPos]
+                name = self.filtered[idx + self.startPos]
                 col = curses.color_pair(5)
 
                 if idx + self.startPos == self.selection:
@@ -93,7 +106,6 @@ class Chooser(object):
         self.bodyWin.refresh()
 
     def run(self):
-
         while True:
             try:
                 c = self.bodyWin.getch()
@@ -105,7 +117,7 @@ class Chooser(object):
 
     def setSelection(self, number):
         number = max(0, number)
-        number = min(number, len(self.data) - 1)
+        number = min(number, len(self.filtered) - 1)
 
         self.selection = number
 
@@ -117,23 +129,37 @@ class Chooser(object):
             self.startPos = self.selection
 
     def keypress(self, char):
-        # Number of stations to change with the page up/down keys
+        # FIXME(ja): pageChange should be size of screen!
         pageChange = 5
 
-        if char == ord('q'):
+        if char == 27:  # magic code 'escape' !!!!
             return -1
 
         if char in (curses.KEY_ENTER, ord('\n'), ord('\r')):
-            return self.data[self.selection]
+            if len(self.filtered):
+                return self.filtered[self.selection]
+            else:
+                return self.match
 
-        if char == curses.KEY_DOWN or char == ord('j'):
+        if char == curses.KEY_DOWN:
             self.setSelection(self.selection + 1)
             self.refreshBody()
             return
 
-        if char == curses.KEY_UP or char == ord('k'):
+        if char == curses.KEY_UP:
             self.setSelection(self.selection - 1)
             self.refreshBody()
+            return
+
+        if char >= ord('a') and char <= ord('z'):
+            self.update_matched(self.match + chr(char))
+            self.setSelection(self.selection)
+            self.initHead()
+            self.refreshBody()
+            return
+
+        if char == 263:  # magic code 'backspace' !!!!
+            self.update_matched(self.match[:-1])
             return
 
         if char == curses.KEY_PPAGE:
@@ -150,13 +176,13 @@ class Chooser(object):
             self.setupAndDrawScreen()
 
 
-def choose(title, data):
-    c = Chooser(title, data)
+def choose(prompt, data):
+    c = Chooser(prompt, data)
     return curses.wrapper(c.setup)
 
-#if __name__ == '__main__':
-#    c = Chooser('hmm', ['testing', 'one', 'two', 'three'] + ['hmm'] * 100)
-#    print curses.wrapper(c.setup)
+
+if __name__ == '__main__':
+    print choose('hmm: ', ['testing', 'one', 'two', 'three'] + ['hmm'] * 100)
     
 
 # pymode:lint_ignore=W901
