@@ -36,15 +36,17 @@ class Cluster(object):
         for vm in self:
             yield vm.get(path)
 
-    def build(self, name, spec):
-        """initialize a named cluster with a spec
+    def refresh(self):
+        """update the list of VMs for the current cluster"""
+        self.vms = [v for v in cloud.find() if v['intern:cluster'] == self.name]
+
+    def build(self, spec):
+        """ensure a cluster meets a given spec
 
         spec is a dictionary with keys of group(s) and value of qty"""
-        self.name = name
 
-        existing = [v for v in cloud.find() if v.server.metadata.get('cluster', None) == self.name]
-
-        existing_names = [e.name for e in existing]
+        self.refresh()
+        existing_names = [e.name for e in self.vms]
 
         goal = {}
         for groups, qty in spec.iteritems():
@@ -55,21 +57,21 @@ class Cluster(object):
         new_vms = []
         for vm_name, meta in goal.iteritems():
             if vm_name not in existing_names:
-                meta = {'groups': meta['groups'], 'cluster': self.name}
+                meta = {'groups': meta['groups'], 'intern:cluster': self.name}
                 flavor = {'ram': '2G'}
                 vm = cloud.boot(vm_name, apt_proxy=True, meta=meta,
                                 flavor=flavor, ping=False)
                 new_vms.append(vm)
 
-        for vm in existing:
+        for vm in self.vms:
             if vm.name not in goal.keys():
                 print 'deleting %s' % vm
                 vm.delete()
 
 
 if __name__ == '__main__':
-    c = Cluster()
-    c.build('staging', {'apps': 2,
-                        'search,redis': 1,
-                        'db': 1,
-                        'cache': 1})
+    c = Cluster('staging')
+    c.build({'apps': 1,
+             'search,redis': 1,
+             'db': 1,
+             'cache': 1})

@@ -25,6 +25,9 @@ class VM(object):
     def ips(self):
         return ' '.join(sum(self.server.networks.values(), []))
 
+    def __getitem__(self, k):
+        return self.server.metadata.get(k, None)
+
     def update(self):
         self.server = conn.nova().servers.get(self.server)
 
