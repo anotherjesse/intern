@@ -4,12 +4,9 @@ from intern import cloud
 class Cluster(object):
     """a collection of VMs"""
 
-    def __init__(self, name=None, vms=None):
+    def __init__(self, name=None):
         self.name = name
-        if vms:
-            self.vms = vms
-        else:
-            self.vms = {}
+        self.refresh()
 
     def __setitem__(self, k, v):
         self.vms[k] = v
@@ -38,7 +35,10 @@ class Cluster(object):
 
     def refresh(self):
         """update the list of VMs for the current cluster"""
-        self.vms = [v for v in cloud.find() if v['intern:cluster'] == self.name]
+        self.vms = {}
+        for v in cloud.find():
+            if v['intern:cluster'] == self.name:
+                self.vms[v.name] = v
 
     def build(self, spec):
         """ensure a cluster meets a given spec
@@ -46,7 +46,7 @@ class Cluster(object):
         spec is a dictionary with keys of group(s) and value of qty"""
 
         self.refresh()
-        existing_names = [e.name for e in self.vms]
+        existing_names = [e.name for e in self]
 
         goal = {}
         for groups, qty in spec.iteritems():
@@ -54,16 +54,18 @@ class Cluster(object):
                 vm_name = '%s-%s-%d' % (self.name, groups, n)
                 goal[vm_name] = {'groups': groups}
 
-        new_vms = []
         for vm_name, meta in goal.iteritems():
             if vm_name not in existing_names:
-                meta = {'groups': meta['groups'], 'intern:cluster': self.name}
+                meta = {
+                    'groups': meta['groups'],
+                    'intern:cluster': self.name
+                }
                 flavor = {'ram': '2G'}
                 vm = cloud.boot(vm_name, apt_proxy=True, meta=meta,
                                 flavor=flavor, ping=False)
-                new_vms.append(vm)
+                self[vm.name] = vm
 
-        for vm in self.vms:
+        for vm in self:
             if vm.name not in goal.keys():
                 print 'deleting %s' % vm
                 vm.delete()
@@ -71,7 +73,8 @@ class Cluster(object):
 
 if __name__ == '__main__':
     c = Cluster('staging')
-    c.build({'apps': 1,
+    c.build({'apps': 2,
              'search,redis': 1,
              'db': 1,
              'cache': 1})
+    c.wait_for_ssh()
