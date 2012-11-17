@@ -111,6 +111,7 @@ class BootServer(command.Command):
         parser.add_argument('--ram', nargs='?', default='2GB')
         parser.add_argument('--vcpus', nargs='?', type=int)
         parser.add_argument('--root', nargs='?', type=int)
+        parser.add_argument('--script', nargs='?', type=str)
         parser.add_argument('--ephemeral', nargs='?', type=int)
         return parser
 
@@ -129,8 +130,11 @@ class BootServer(command.Command):
         meta = {}
         if parsed_args.groups:
             meta['groups'] = parsed_args.groups
+        script = None
+        if parsed_args.script:
+            script = open(parsed_args.script).read()
         vm = cloud.boot(name, parsed_args.image, properties,
-                        meta=meta, apt_proxy=True)
+                        meta=meta, apt_proxy=True, script=script)
         if parsed_args.ssh:
             vm.wait_for_ssh()
 
