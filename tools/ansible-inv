@@ -3,7 +3,6 @@
 import json
 import os
 import sys
-import time
 import yaml
 
 import intern.cloud
@@ -52,8 +51,11 @@ if __name__ == '__main__':
         ip = sys.argv[2]
         for vm in cluster:
             if vm.ip == ip:
-                print json.dumps({
-                        'os:ip': vm.ip,
-                        'os:name': vm.name
-                    })
+                info = {
+                    'os:ip': vm.ip,
+                    'os:name': vm.name
+                }
+                for k, v in vm.server.metadata.iteritems():
+                    info['os:%s' % k] = v
+                print json.dumps(info)
                 sys.exit(0)
