@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+
+import json
+import sys
+import time
+import yaml
+
+import intern.cloud
+import intern.cluster
+
+def foo():
+    vms = intern.cloud.find()
+    if len(vms) == 0:
+        print 'no servers running'
+        sys.exit(1)
+
+    print 'killing VMs named %s' % name
+
+    for vm in vms:
+        if vm.name == name:
+            vm.delete()
+
+    time.sleep(0.5)
+
+
+def find_config(path):
+    """find a intern.yml conf file by going up parent dirs"""
+    path = os.path.abspath(path)
+    fn = os.path.join(path, 'intern.yml')
+    if os.path.exists(fn):
+        return fn
+    parent = os.path.abspath(os.path.join(path, '..'))
+    if parent == path:
+        raise Exception('unable to find intern.yml in path')
+    return find_config(parent)
+
+
+if __name__ == '__main__':
+    import os
+    conf_file = os.environ.get('ANSIBLE')
+    if conf_file is None:
+        conf_file = find_config(os.getcwd())
+    config = yaml.load(open(conf_file))
+    if len(sys.argv) == 2 and (sys.argv[1] == '--list'):
+        cluster = intern.cluster.Cluster(config['name'])
+        if not os.environ.get('ANSIBLE_NO_BUILD'):
+            # FIXME(ja): optimize this by sending wait_for_ssh option
+            # to build, and only waiting for ssh on the new vms...
+            if cluster.build(config['spec']):
+                cluster.wait_for_ssh()
+        groups = {}
+        for vm in cluster:
+            for g in vm.get('groups', '').split(','):
+                if g not in groups:
+                    groups[g] = []
+                groups[g].append(vm)
+        print json.dumps(groups)
+    elif len(sys.argv) == 3 and (sys.argv[1] == '--host'):
+        print 'implement me!'
+        sys.exit(1)
+    else:
+        print 'usage: ansible-playbook -i %s (playbook)' % sys.argv[0]

@@ -11,6 +11,9 @@ class Cluster(object):
     def __setitem__(self, k, v):
         self.vms[k] = v
 
+    def add(self, vm):
+        self[vm.name] = vm
+
     def __len__(self):
         return len(self.vms)
 
@@ -36,15 +39,18 @@ class Cluster(object):
     def refresh(self):
         """update the list of VMs for the current cluster"""
         self.vms = {}
-        for v in cloud.find():
-            if v['intern:cluster'] == self.name:
-                self.vms[v.name] = v
+        for vm in cloud.find():
+            if vm['intern:cluster'] == self.name:
+                self.add(vm)
 
     def build(self, spec):
         """ensure a cluster meets a given spec
 
-        spec is a dictionary with keys of group(s) and value of qty"""
+        spec is a dictionary with keys of group(s) and value of qty
 
+        returns true if any VM launched or terminated"""
+
+        changed = False
         self.refresh()
         existing_names = [e.name for e in self]
 
@@ -63,18 +69,23 @@ class Cluster(object):
                 flavor = {'ram': '2G'}
                 vm = cloud.boot(vm_name, apt_proxy=True, meta=meta,
                                 flavor=flavor, ping=False)
-                self[vm.name] = vm
+                self.add(vm)
+                changed = True
 
         for vm in self:
             if vm.name not in goal.keys():
                 print 'deleting %s' % vm
                 vm.delete()
+                del self[vm.name]
+                changed = True
+
+        return changed
 
 
 if __name__ == '__main__':
     c = Cluster('staging')
-    c.build({'apps': 2,
-             'search,redis': 1,
-             'db': 1,
-             'cache': 1})
-    c.wait_for_ssh()
+    if c.build({'apps': 2,
+                'search,redis': 1,
+                'db': 1,
+                'cache': 1}):
+        c.wait_for_ssh()
