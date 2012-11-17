@@ -4,7 +4,7 @@ def cloudconfig(options):
     lines = ['#cloud-config']
     if options.get('apt_proxy'):
         lines.append('apt_proxy: %s' % options['apt_proxy'])
-    if options.get('root'):
+    if options.get('enable_root'):
         lines.append('disable_root: False')
     if options.get('hostname'):
         lines.append('hostname: %s' % options['hostname'])

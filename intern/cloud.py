@@ -119,7 +119,8 @@ def delete(name, qty=1):
 
 
 def boot(name, image='quantal', flavor=None, script=None, ping=True,
-         packages=None, apt_proxy=None, floating_ip=None, meta=None):
+         packages=None, apt_proxy=None, floating_ip=None, meta=None,
+         enable_root=False):
     """boot a VM with properties:
 
       * name: name of the VM
@@ -132,6 +133,7 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
       * ping: return from boot command only after ping to VM succeeds
       * floating_ip: True: grab an unassociated IP or allocate an IP
       *              or if a specific IP is passed, use it
+      * enable_root: configures cloud-init to enable root ssh
     * """
     # FIXME: add image if not present
     image = find_image(image)
@@ -166,6 +168,7 @@ def boot(name, image='quantal', flavor=None, script=None, ping=True,
                                       'ssh_key': key,
                                       'hostname': name,
                                       'packages': packages,
+                                      'enable_root': enable_root,
                                       'script': script})
 
     s = conn.nova().servers.create(name,
