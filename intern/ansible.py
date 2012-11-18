@@ -35,7 +35,7 @@ class Ansible(intern.cluster.Cluster):
                 if self.hostvars:
                     info.update(self.hostvars)
                 for k, v in vm.server.metadata.iteritems():
-                    info['os_meta_%s' % k] = v
+                    info['os_meta.%s' % k] = v
                 return json.dumps(info, sort_keys=True, indent=2)
 
     def cli(self):

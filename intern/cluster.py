@@ -1,3 +1,5 @@
+import re
+
 from intern import cloud
 
 
@@ -58,6 +60,7 @@ class Cluster(object):
         for groups, qty in spec.iteritems():
             for n in xrange(qty):
                 vm_name = '%s-%s-%d' % (self.name, groups, n)
+                vm_name = re.sub(r'\W+', '-', vm_name)
                 goal[vm_name] = {'groups': groups}
 
         for vm_name, meta in goal.iteritems():
