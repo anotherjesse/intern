@@ -28,14 +28,14 @@ class Ansible(intern.cluster.Cluster):
         for vm in self:
             if vm.ip == ip:
                 info = {
-                    'os:uuid': vm.id,
-                    'os:ip': vm.ip,
-                    'os:name': vm.name
+                    'os_uuid': vm.id,
+                    'os_ip': vm.ip,
+                    'os_name': vm.name
                 }
                 if self.hostvars:
                     info.update(self.hostvars)
                 for k, v in vm.server.metadata.iteritems():
-                    info['os:meta:%s' % k] = v
+                    info['os_meta_%s' % k] = v
                 return json.dumps(info, sort_keys=True, indent=2)
 
     def cli(self):

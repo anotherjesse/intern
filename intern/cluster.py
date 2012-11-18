@@ -68,7 +68,7 @@ class Cluster(object):
                 }
                 flavor = {'ram': '2G'}
                 vm = cloud.boot(vm_name, apt_proxy=True, meta=meta,
-                                flavor=flavor, ping=False)
+                                flavor=flavor, ping=False, enable_root=True)
                 self.add(vm)
                 changed = True
 
