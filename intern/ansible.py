@@ -54,7 +54,7 @@ class Ansible(intern.cluster.Cluster):
             for vm in self:
                 vm.delete()
         elif cmd == '--build':
-            if self.build(self.spec):
+            if self.build(self.spec, self.image):
                 self.wait_for_ssh()
             print 'spec complete'
 

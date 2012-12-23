@@ -45,7 +45,7 @@ class Cluster(object):
             if vm['intern:cluster'] == self.name:
                 self.add(vm)
 
-    def build(self, spec):
+    def build(self, spec, image=None):
         """ensure a cluster meets a given spec
 
         spec is a dictionary with keys of group(s) and value of qty
@@ -70,7 +70,7 @@ class Cluster(object):
                     'intern:cluster': self.name
                 }
                 flavor = {'ram': '2G'}
-                vm = cloud.boot(vm_name, apt_proxy=True, meta=meta,
+                vm = cloud.boot(vm_name, apt_proxy=True, meta=meta, image=image,
                                 flavor=flavor, ping=False, enable_root=True)
                 self.add(vm)
                 changed = True
